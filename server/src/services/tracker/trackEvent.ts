@@ -246,26 +246,7 @@ export const trackingPayloadSchema = z.discriminatedUnion("type", [
 
 const logger = createServiceLogger("track-event");
 
-function isFirstPartyProxyRequest(request: FastifyRequest): boolean {
-  const proxyHeader = request.headers["x-rybbit-proxy"];
-  const value = Array.isArray(proxyHeader) ? proxyHeader[0] : proxyHeader;
-  return value === "1" || value?.toLowerCase() === "true";
-}
-
-async function isTrustedFirstPartyProxy(request: FastifyRequest, siteId: number): Promise<boolean> {
-  if (!isFirstPartyProxyRequest(request)) {
-    return false;
-  }
-
-  const apiKeyResult = await checkApiKey(request, { siteId });
-  return apiKeyResult.valid;
-}
-
 async function isTrustedServerSideIngestion(request: FastifyRequest, siteId: number): Promise<boolean> {
-  if (isFirstPartyProxyRequest(request)) {
-    return false;
-  }
-
   const authHeader = request.headers["authorization"];
   if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
     return false;
@@ -302,14 +283,8 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       });
     }
 
-    const trustedFirstPartyProxy = await isTrustedFirstPartyProxy(request, siteConfiguration.siteId);
-    const trustedServerSideIngestion = trustedFirstPartyProxy
-      ? false
-      : await isTrustedServerSideIngestion(request, siteConfiguration.siteId);
-    const trackingIdentity = resolveTrackingIdentity(request, validatedPayload, {
-      trustedServerSideIngestion,
-      trustedFirstPartyProxy,
-    });
+    const trustedServerSideIngestion = await isTrustedServerSideIngestion(request, siteConfiguration.siteId);
+    const trackingIdentity = resolveTrackingIdentity(request, validatedPayload, trustedServerSideIngestion);
     const requestIP = trackingIdentity.ipAddress;
 
     const botDetectionResult = checkBotBlocking({
@@ -374,10 +349,7 @@ export async function trackEvent(request: FastifyRequest, reply: FastifyReply) {
       validatedPayload.type,
       validatedPayload, // Pass original validated payload
       siteConfiguration,
-      {
-        trustedServerSideIngestion,
-        trustedFirstPartyProxy,
-      }
+      trustedServerSideIngestion
     );
 
     // Update session (use numeric siteId)

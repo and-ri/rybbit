@@ -100,8 +100,6 @@ This catches obvious floods and fast crawlers, but it is local to a Node process
 
 ## Trust Boundaries
 
-Bot blocking assumes the resolved IP is trustworthy. In production, the origin should only accept traffic from trusted proxy infrastructure, or the edge should strip and rebuild forwarding headers. Public tracking requests ignore client-supplied `ip_address` and `user_agent`; those overrides are only honored for trusted server-side ingestion.
-
-First-party customer proxies can pass the real visitor IP without disabling bot blocking by sending `X-Rybbit-Proxy: 1` plus a valid API key from the proxy to Rybbit. The API key can be sent as `Authorization: Bearer <api key>` or as the origin-only `X-Rybbit-Api-Key` header. In that mode the tracker trusts proxy-provided IP headers for IP resolution only, preferring `X-Rybbit-Client-IP`, then `True-Client-IP`, `CloudFront-Viewer-Address`, `X-Real-IP`, `X-Forwarded-For`, and `Forwarded`. It still uses the request user-agent header and still runs every bot detection layer.
+Bot blocking assumes the resolved IP is meaningful. The tracker resolves IPs from `X-Forwarded-For`, then `X-Real-IP`, then `CF-Connecting-IP`, then the Fastify request IP. Public tracking requests ignore client-supplied `ip_address` and `user_agent`; those overrides are only honored for trusted server-side ingestion.
 
 Client-supplied `_bs` and `_bsm` are useful inputs but are not secure proof.
