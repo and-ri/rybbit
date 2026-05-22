@@ -1,10 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 import { cn } from "@/lib/utils";
 import { Suspense } from "react";
-import { enrichTweet, type EnrichedTweet, type TweetProps } from "react-tweet";
+import { enrichTweet, type TweetProps } from "react-tweet";
 import { getTweet, type Tweet } from "react-tweet/api";
 import { TweetBody, TweetHeader, TweetMedia } from "./TweetClient";
-import { TweetErrorBoundary } from "./TweetErrorBoundary";
 
 const Skeleton = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   return <div className={cn("rounded-md bg-primary/10", className)} {...props} />;
@@ -29,18 +28,8 @@ export const TweetNotFound = ({ className, ...props }: { className?: string; [ke
   </div>
 );
 
-const logTweetError = (error: unknown, onError?: (error: Error) => void) => {
-  const resolvedError = error instanceof Error ? error : new Error(String(error));
-
-  if (onError) {
-    onError(resolvedError);
-    return;
-  }
-
-  console.error(resolvedError);
-};
-
-const TweetContent = ({ tweet, className, ...props }: { tweet: EnrichedTweet; className?: string }) => {
+export const MagicTweet = ({ tweet, className, ...props }: { tweet: Tweet; className?: string }) => {
+  const enrichedTweet = enrichTweet(tweet);
   return (
     <div
       className={cn(
@@ -49,21 +38,15 @@ const TweetContent = ({ tweet, className, ...props }: { tweet: EnrichedTweet; cl
       )}
       {...props}
     >
-      <TweetHeader tweet={tweet} />
-      <TweetBody tweet={tweet} />
+      <TweetHeader tweet={enrichedTweet} />
+      <TweetBody tweet={enrichedTweet} />
       {/* {tweet.id_str !== "1920425974954381456" && (
         <div className="hidden sm:block">
-          <TweetMedia tweet={tweet} />
+          <TweetMedia tweet={enrichedTweet} />
         </div>
       )} */}
     </div>
   );
-};
-
-export const MagicTweet = ({ tweet, className, ...props }: { tweet: Tweet; className?: string }) => {
-  const enrichedTweet = enrichTweet(tweet);
-
-  return <TweetContent tweet={enrichedTweet} className={className} {...props} />;
 };
 
 /**
@@ -78,27 +61,24 @@ export const TweetCard = async ({
 }: TweetProps & {
   className?: string;
 }) => {
-  const NotFound = components?.TweetNotFound || TweetNotFound;
-  const notFound = <NotFound {...props} />;
+  const tweet = id
+    ? await getTweet(id).catch(err => {
+        if (onError) {
+          onError(err);
+        } else {
+          console.error(err);
+        }
+      })
+    : undefined;
 
-  try {
-    const tweet = id ? await getTweet(id) : undefined;
-
-    if (!tweet) {
-      return notFound;
-    }
-
-    const enrichedTweet = enrichTweet(tweet);
-
-    return (
-      <Suspense fallback={fallback}>
-        <TweetErrorBoundary fallback={notFound} resetKey={id}>
-          <TweetContent tweet={enrichedTweet} {...props} />
-        </TweetErrorBoundary>
-      </Suspense>
-    );
-  } catch (error) {
-    logTweetError(error, onError);
-    return notFound;
+  if (!tweet) {
+    const NotFound = components?.TweetNotFound || TweetNotFound;
+    return <NotFound {...props} />;
   }
+
+  return (
+    <Suspense fallback={fallback}>
+      <MagicTweet tweet={tweet} {...props} />
+    </Suspense>
+  );
 };
