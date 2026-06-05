@@ -6,6 +6,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import {
+  adminMoveSite,
   collectTelemetry,
   getAdminOrganizations,
   getAdminServiceEventCount,
@@ -112,6 +113,7 @@ import {
   getSitePrivateLinkConfig,
   getSitesFromOrg,
   getTrackingConfig,
+  moveSite,
   updateSiteConfig,
   updateSitePrivateLinkConfig,
   verifyScript,
@@ -335,6 +337,7 @@ async function sitesRoutes(fastify: FastifyInstance) {
   // Sites
   fastify.get("/sites/:siteId", publicSite, getSite);
   fastify.put("/sites/:siteId/config", adminSite, updateSiteConfig);
+  fastify.put("/sites/:siteId/move", adminSite, moveSite);
   fastify.delete("/sites/:siteId", adminSite, deleteSite);
   fastify.get("/sites/:siteId/private-link-config", adminSite, getSitePrivateLinkConfig);
   fastify.post("/sites/:siteId/private-link-config", adminSite, updateSitePrivateLinkConfig);
@@ -403,6 +406,7 @@ async function stripeAdminRoutes(fastify: FastifyInstance) {
   fastify.get("/admin/clickhouse-stats", adminOnly, getClickhouseStats);
   fastify.get("/admin/clickhouse-query-log", adminOnly, getClickhouseQueryLog);
   fastify.get("/admin/sites", adminOnly, getAdminSites);
+  fastify.put("/admin/sites/:siteId/move", adminOnly, adminMoveSite);
   fastify.get("/admin/organizations", adminOnly, getAdminOrganizations);
   fastify.get("/admin/service-event-count", adminOnly, getAdminServiceEventCount);
   fastify.post("/admin/telemetry", collectTelemetry); // Public - telemetry collection
