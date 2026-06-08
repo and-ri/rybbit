@@ -197,7 +197,10 @@ export function invalidateStripeSubscriptionCache(stripeCustomerId: string | nul
  * Gets Stripe subscription info for an organization
  * @returns Stripe subscription info or null if no active subscription found
  */
-export async function getStripeSubscription(stripeCustomerId: string | null): Promise<StripeSubscriptionInfo | null> {
+export async function getStripeSubscription(
+  stripeCustomerId: string | null,
+  { throwOnError = false }: { throwOnError?: boolean } = {}
+): Promise<StripeSubscriptionInfo | null> {
   if (!stripeCustomerId) {
     return null;
   }
@@ -216,9 +219,20 @@ export async function getStripeSubscription(stripeCustomerId: string | null): Pr
     return value;
   } catch (error) {
     console.error("Error fetching Stripe subscription:", error);
-    // On error, fall back to the last cached value (even if expired) rather than
-    // treating the org as having no subscription.
-    return cached?.value ?? null;
+    // Prefer the last known value (even if expired) over treating the org as having
+    // no subscription — that would silently downgrade a paying customer. A cached
+    // `null` is also trustworthy: it means we previously confirmed there was no sub.
+    if (cached) {
+      return cached.value;
+    }
+    // No cached value at all, so we genuinely don't know this customer's status.
+    // Callers that must not mistake a transient Stripe failure for "no subscription"
+    // (e.g. the usage cron) opt into throwing so they can preserve the org's existing
+    // state instead of downgrading it to free.
+    if (throwOnError) {
+      throw error;
+    }
+    return null;
   }
 }
 
@@ -343,7 +357,8 @@ export async function getCustomPlanSubscription(organizationId: string): Promise
  */
 export async function getBestSubscription(
   organizationId: string,
-  stripeCustomerId: string | null
+  stripeCustomerId: string | null,
+  { throwOnStripeError = false }: { throwOnStripeError?: boolean } = {}
 ): Promise<SubscriptionInfo> {
   // Check custom plan first - highest priority
   const customSub = await getCustomPlanSubscription(organizationId);
@@ -360,7 +375,7 @@ export async function getBestSubscription(
   // Get both subscription types
   const [appsumoSub, stripeSub] = await Promise.all([
     getAppSumoSubscription(organizationId),
-    getStripeSubscription(stripeCustomerId),
+    getStripeSubscription(stripeCustomerId, { throwOnError: throwOnStripeError }),
   ]);
 
 
