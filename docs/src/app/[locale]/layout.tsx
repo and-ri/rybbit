@@ -45,6 +45,7 @@ export default async function LocaleLayout({
           enableSystem: true,
         }}
         i18n={provider(locale)}
+        search={{ options: { type: 'static' } }}
       >
         {children}
       </RootProvider>
