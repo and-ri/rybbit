@@ -147,6 +147,7 @@ import {
   unsubscribeMarketing,
   updateAccountSettings,
 } from "./api/user/index.js";
+import { validateHttpTimeParams } from "./api/analytics/utils/query-validation.js";
 import { initializeClickhouse } from "./db/clickhouse/clickhouse.js";
 import { initPostgres } from "./db/postgres/initPostgres.js";
 import {
@@ -171,10 +172,20 @@ import { usageService } from "./services/usageService.js";
 import { weeklyReportService } from "./services/weekyReports/weeklyReportService.js";
 import { handleAppSumoWebhook, activateAppSumoLicense } from "./api/as/index.js";
 
+// Reject requests whose shared time query params are present but invalid.
+// Historically they were silently dropped, so endpoints ran over all time and
+// returned wrong data with a 200. Absent params (all-time mode) stay valid.
+const validateTimeParams = async (request: FastifyRequest, reply: FastifyReply) => {
+  const error = validateHttpTimeParams(request.query);
+  if (error) {
+    return reply.status(400).send({ error });
+  }
+};
+
 // Pre-composed middleware chains for common auth patterns
 // Cast as any to work around Fastify's type inference limitations with preHandler
-const publicSite = { preHandler: [resolveSiteId, allowPublicSiteAccess] as any };
-const authSite = { preHandler: [resolveSiteId, requireSiteAccess] as any };
+const publicSite = { preHandler: [resolveSiteId, allowPublicSiteAccess, validateTimeParams] as any };
+const authSite = { preHandler: [resolveSiteId, requireSiteAccess, validateTimeParams] as any };
 const adminSite = { preHandler: [resolveSiteId, requireSiteAdminAccess] as any };
 const authOnly = { preHandler: [requireAuth] as any };
 const adminOnly = { preHandler: [requireAdmin] as any };

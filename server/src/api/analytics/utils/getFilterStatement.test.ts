@@ -142,10 +142,10 @@ describe("getFilterStatement", () => {
       expect(result).toBe("AND browser != 'Chrome'");
     });
 
-    it("should handle multiple not_equals values", () => {
+    it("should handle multiple not_equals values with NOT IN semantics", () => {
       const filters = JSON.stringify([{ parameter: "browser", type: "not_equals", value: ["Chrome", "Firefox"] }]);
       const result = getFilterStatement(filters);
-      expect(result).toBe("AND (browser != 'Chrome' OR browser != 'Firefox')");
+      expect(result).toBe("AND (browser != 'Chrome' AND browser != 'Firefox')");
     });
   });
 
