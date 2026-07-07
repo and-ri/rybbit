@@ -282,7 +282,6 @@
   "9tjZ7S": "Failed to create user",
   "9uKBh7": "Remote config",
   "9vpJ9O": "Sites ({count})",
-  "A+G23r": "Share a private link",
   "A/lLjO": "Generating...",
   "A4AHkc": "Min",
   "A5E371": "The page you're looking for doesn't exist or has been moved. Let's get you back to analyzing your data.",
@@ -1560,5 +1559,6 @@
   "zvbn/a": "Use a different email",
   "zxvhnE": "Daily",
   "zyQ3nw": "Add Another Property",
-  "zz0om1": "IP Exclusions"
+  "zz0om1": "IP Exclusions",
+  "8GNnVT": "Share or export data"
 }

@@ -282,13 +282,21 @@ function collectTableReferences(query: string): string[] {
     }
   };
 
-  const keywordPattern = /\b(FROM|JOIN)\b/gi;
+  // Match ARRAY JOIN ahead of a bare JOIN so its inner JOIN isn't rescanned.
+  const keywordPattern = /\b(ARRAY\s+JOIN|FROM|JOIN)\b/gi;
   let match: RegExpExecArray | null;
   while ((match = keywordPattern.exec(query)) !== null) {
     const afterKeyword = match.index + match[0].length;
+    const keyword = match[1].toLowerCase();
+
+    // ARRAY JOIN takes an array expression (a column or function like
+    // mapKeys(...)), not a table reference — skip it.
+    if (keyword.includes("array")) {
+      continue;
+    }
 
     // A JOIN introduces exactly one table reference.
-    if (match[1].toLowerCase() === "join") {
+    if (keyword === "join") {
       readReference(afterKeyword);
       continue;
     }
@@ -336,7 +344,13 @@ function collectInTableReferences(query: string): string[] {
   while ((match = inPattern.exec(query)) !== null) {
     const start = skipWhitespace(query, match.index + match[0].length);
     if (start < query.length && isIdentifierStart(query[start])) {
-      references.push(readIdentifier(query, start)[0]);
+      const [identifier, end] = readIdentifier(query, start);
+      // `expr IN function(...)` (e.g. tuple('US','GB')) is a value expression, not
+      // the `expr IN table` shorthand — a following "(" marks it as a function call.
+      if (query[skipWhitespace(query, end)] === "(") {
+        continue;
+      }
+      references.push(identifier);
     }
   }
 

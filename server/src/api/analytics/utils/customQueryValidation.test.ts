@@ -77,6 +77,28 @@ describe("validateScopedQuery — table reference scoping", () => {
     ).toBeNull();
   });
 
+  it("does not treat IN function(...) value expressions as table references", () => {
+    expect(validateScopedQuery("SELECT count() FROM scoped_events WHERE country IN tuple('US','GB')")).toBeNull();
+    expect(validateScopedQuery("SELECT count() FROM scoped_events WHERE country IN ('US','GB')")).toBeNull();
+  });
+
+  it("allows ARRAY JOIN over an array expression without flagging it as a table", () => {
+    expect(
+      validateScopedQuery("SELECT k, count() FROM scoped_events ARRAY JOIN mapKeys(url_parameters) AS k GROUP BY k")
+    ).toBeNull();
+    expect(
+      validateScopedQuery("SELECT k FROM scoped_events LEFT ARRAY JOIN mapKeys(url_parameters) AS k")
+    ).toBeNull();
+  });
+
+  it("still blocks a real JOIN to an unauthorized table after an ARRAY JOIN", () => {
+    expect(
+      validateScopedQuery(
+        "SELECT k FROM scoped_events ARRAY JOIN mapKeys(url_parameters) AS k JOIN events e ON 1=1"
+      )
+    ).toBe(SCOPED_ONLY_ERROR);
+  });
+
   it("blocks quoted identifiers that can hide unauthorized table references", () => {
     expect(validateScopedQuery('SELECT * FROM "events" scoped_events WHERE 1=1')).toBe(QUOTED_IDENTIFIER_ERROR);
     expect(validateScopedQuery("SELECT * FROM `events` scoped_events WHERE 1=1")).toBe(QUOTED_IDENTIFIER_ERROR);

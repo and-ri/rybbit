@@ -350,7 +350,7 @@ async function analyticsRoutes(fastify: FastifyInstance) {
   fastify.get("/sites/:siteId/bots/overview", publicSite, getBotOverview);
   fastify.get("/sites/:siteId/bots/time-series", publicSite, getBotTimeSeries);
   fastify.get("/sites/:siteId/bots/by-dimension", publicSite, getBotDimension);
-  fastify.get("/sites/:siteId/export/pdf", publicSite, generatePdfReport);
+  fastify.get("/sites/:siteId/export/pdf", authSite, generatePdfReport);
 }
 
 async function sessionReplayRoutes(fastify: FastifyInstance) {
@@ -423,11 +423,11 @@ async function userRoutes(fastify: FastifyInstance) {
 
 async function gscRoutes(fastify: FastifyInstance) {
   // GOOGLE SEARCH CONSOLE
-  fastify.get("/sites/:siteId/gsc/connect", authSite, connectGSC);
+  fastify.get("/sites/:siteId/gsc/connect", adminSite, connectGSC);
   fastify.get("/gsc/callback", gscCallback); // Public - OAuth callback
   fastify.get("/sites/:siteId/gsc/status", publicSite, getGSCStatus);
-  fastify.delete("/sites/:siteId/gsc/disconnect", authSite, disconnectGSC);
-  fastify.post("/sites/:siteId/gsc/select-property", authSite, selectGSCProperty);
+  fastify.delete("/sites/:siteId/gsc/disconnect", adminSite, disconnectGSC);
+  fastify.post("/sites/:siteId/gsc/select-property", adminSite, selectGSCProperty);
   fastify.get("/sites/:siteId/gsc/data", publicSite, getGSCData);
 }
 
